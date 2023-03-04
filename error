@@ -1,0 +1,586 @@
+import React, { useState } from 'react'
+import { Formik } from 'formik'
+import { useNavigate } from 'react-router-dom'
+import {
+   Box,
+   Button,
+   TextField,
+   Stepper,
+   Step,
+   StepLabel,
+   Typography,
+   useMediaQuery,
+} from '@mui/material'
+import { setLogin } from 'state'
+import { useDispatch } from 'react-redux'
+import { palette, useTheme } from '@mui/system'
+
+import * as yup from 'yup'
+
+const initialRegister = {
+   email: '',
+   password: '',
+   role: '',
+   firstName: '',
+   lastName: '',
+   hourly: '',
+   commission: '',
+   id: '',
+   loginError: '',
+}
+const registerSchema = yup.object().shape({
+   email: yup.string().email().required(),
+   password: yup.string().min(6).required(),
+   role: yup.string(),
+   firstName: yup.string().when('role', {
+      is: 'host',
+      then: yup.string().required(),
+   }),
+   lastName: yup.string().when('role', {
+      is: 'host',
+      then: yup.string().required(),
+   }),
+   hourly: yup.number().when('role', {
+      is: 'host',
+      then: yup.number().required(),
+   }),
+   commission: yup.number().when('role', {
+      is: 'host',
+      then: yup.number().required(),
+   }),
+   id: yup.string().when('role', {
+      is: 'host',
+      then: yup.string().required(),
+   }),
+})
+
+const RegisterForm = () => {
+   const dispatch = useDispatch()
+   const navigate = useNavigate()
+   const [activeStep, setActiveStep] = useState(0)
+   const isNonMobile = useMediaQuery('(min-width:600px)')
+
+   const { palette } = useTheme()
+
+   const registerUrl = 'http://localhost:9000/auth/register'
+   const loginUrl = 'http://localhost:9000/auth/login'
+
+   const [pageType, setPageType] = useState('login')
+   const isLogin = pageType === 'login'
+   const isRegister = pageType === 'register'
+
+   const apiUrl = pageType === 'login' ? loginUrl : registerUrl
+
+   const login = async (values, onSubmitProps) => {}
+   const registerVendor = async (values, onSubmitProps) => {}
+   const register = async (values, onSubmitProps) => {
+      console.log(values)
+
+      let savedUser
+
+      try {
+         const savedUserResponse = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(values),
+         })
+
+         savedUser = await savedUserResponse.json() // Assign value to savedUser inside the try block
+
+         onSubmitProps.resetForm()
+      } catch (error) {
+         console.log(error)
+      }
+   }
+
+   const registerHost = async (values, onSubmitProps) => {
+      console.log(values)
+      try {
+         const savedHostResponse = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+               firstName: values.firstName,
+               lastName: values.lastName,
+               hourly: values.hourly,
+               commission: values.commission,
+               id: values.id,
+            }),
+         })
+
+         const savedHost = await savedHostResponse.json()
+         const hostId = savedHost._id
+
+         onSubmitProps.resetForm()
+
+         if (savedHost) {
+            register(
+               {
+                  email: values.email,
+                  password: values.password,
+                  host: hostId,
+                  type: 'host',
+               },
+               onSubmitProps
+            )
+         }
+      } catch (error) {
+         console.log(error)
+      }
+   }
+
+   const handleFormSubmit = async (values, onSubmitProps) => {
+      //   Login
+      //   if (pageType === 'login') {
+      //      await login(values, onSubmitProps)
+      //   } else if (activeStep === 1 && values.role === 'host') {
+      //      await registerHost(values, onSubmitProps)
+      //   }
+
+      console.log(values, onSubmitProps)
+   }
+
+   return (
+      <>
+         <Formik
+            onSubmit={handleFormSubmit}
+            initialValues={initialRegister}
+            validationSchema={registerSchema}
+         >
+            {({
+               values,
+               errors,
+               touched,
+               handleBlur,
+               handleChange,
+               handleSubmit,
+               resetForm,
+               isSubmitting,
+            }) => (
+               <Box>
+                  {/* Title */}
+                  {/* <>
+                     {pageType === 'register' ? (
+                        <Box>
+                           <Typography
+                              sx={{ textAlign: 'center', p: '2rem' }}
+                              variant="h2"
+                           >
+                              {`Register ${values.role}`}
+                           </Typography>
+                           <Stepper
+                              activeStep={activeStep}
+                              sx={{ p: '0 1rem' }}
+                           >
+                              <Step>
+                                 <StepLabel>Choose your role</StepLabel>
+                              </Step>
+                              <Step>
+                                 <StepLabel>Complete your profile</StepLabel>
+                              </Step>
+                           </Stepper>
+                        </Box>
+                     ) : (
+                        <Typography
+                           sx={{ textAlign: 'center', p: '2rem' }}
+                           variant="h2"
+                        >
+                           Sign-in
+                        </Typography>
+                     )}
+                  </>
+
+                  {/* Body */}
+                  <Box>
+                     <Box sx={{ p: '1rem' }}>
+                        {/* SIGN-IN */}
+                        {isLogin && (
+                           <>
+                              <Box
+                                 display="flex"
+                                 gap="30px"
+                                 textAlign="center"
+                                 flexDirection="column"
+                                 sx={{
+                                    m: '2rem',
+                                    p: '2rem',
+                                    backgroundColor:
+                                       palette.primary.backgroundColor,
+                                    color: palette.background.alt,
+                                    '&:hover': { color: palette.primary.main },
+                                 }}
+                              >
+                                 <TextField
+                                    label="Email"
+                                    onBlur={handleBlur}
+                                    onChange={handleChange}
+                                    value={values.email}
+                                    name="email"
+                                    error={
+                                       Boolean(touched.email) &&
+                                       Boolean(errors.email)
+                                    }
+                                    helperText={touched.email && errors.email}
+                                 />
+                                 <TextField
+                                    label="Password"
+                                    type="password"
+                                    onBlur={handleBlur}
+                                    onChange={handleChange}
+                                    value={values.password}
+                                    name="password"
+                                    error={
+                                       Boolean(touched.password) &&
+                                       Boolean(errors.password)
+                                    }
+                                    helperText={
+                                       touched.password && errors.password
+                                    }
+                                 />
+                              </Box>
+                           </>
+                        )}
+
+                        {pageType === 'register' && (
+                           <>
+                              {activeStep === 0 ? (
+                                 <Box
+                                    sx={{
+                                       display: 'flex',
+                                       justifyContent: 'center',
+                                       textAlign: 'center',
+                                       '& > button': {
+                                          m: '2rem 1rem',
+                                          p: '1rem',
+                                          width: '5rem',
+                                          backgroundColor: palette.primary.main,
+                                          color: palette.background.alt,
+                                          '&:hover': {
+                                             color: palette.primary.main,
+                                          },
+                                       },
+                                    }}
+                                 >
+                                    <Button
+                                       value={values.role}
+                                       variant={
+                                          values.role === 'host'
+                                             ? 'contained'
+                                             : 'outlined'
+                                       }
+                                       onClick={() => {
+                                          setActiveStep(activeStep + 1)
+                                          handleChange('role')({
+                                             target: { value: 'host' },
+                                          })
+                                       }}
+                                       sx={{
+                                          mr: '1rem',
+                                          backgroundColor: palette.primary.main,
+                                          color: palette.background.alt,
+                                          '&:hover': {
+                                             backgroundColor:
+                                                palette.primary.light,
+                                          },
+                                       }}
+                                    >
+                                       vendor
+                                    </Button>
+                                    <Button
+                                       value={values.role}
+                                       variant={
+                                          values.role === 'vendor'
+                                             ? 'contained'
+                                             : 'outlined'
+                                       }
+                                       onClick={() => {
+                                          setActiveStep(activeStep + 1)
+                                          handleChange('role')({
+                                             target: { value: 'vendor' },
+                                          })
+                                       }}
+                                       sx={{
+                                          mr: '1rem',
+                                          backgroundColor: palette.primary.main,
+                                          color: palette.background.alt,
+                                          '&:hover': {
+                                             backgroundColor:
+                                                palette.primary.light,
+                                          },
+                                       }}
+                                    >
+                                       vendor
+                                    </Button>
+                                 </Box>
+                              ) : (
+                                 <Box
+                                    textAlign="center"
+                                    sx={{
+                                       m: '2rem',
+                                       display: 'grid',
+                                       gridTemplateColumns: 'repeat(10, 1fr)',
+                                       gap: '30px',
+                                       '& > div': {
+                                          gridColumn: isNonMobile
+                                             ? undefined
+                                             : 'span 4',
+                                       },
+                                    }}
+                                 >
+                                    {values.role === 'host' && (
+                                       <>
+                                          <TextField
+                                             label="email"
+                                             onBlur={handleBlur}
+                                             onChange={handleChange}
+                                             value={values.email}
+                                             name="email"
+                                             error={
+                                                Boolean(touched.email) &&
+                                                Boolean(errors.email)
+                                             }
+                                             helperText={
+                                                touched.email && errors.email
+                                             }
+                                             sx={{ gridColumn: 'span 5' }}
+                                          />
+                                          <TextField
+                                             label="Password"
+                                             type="password"
+                                             onBlur={handleBlur}
+                                             onChange={handleChange}
+                                             value={values.password}
+                                             name="password"
+                                             error={
+                                                Boolean(touched.password) &&
+                                                Boolean(errors.password)
+                                             }
+                                             helperText={
+                                                touched.password &&
+                                                errors.password
+                                             }
+                                             sx={{ gridColumn: 'span 5' }}
+                                          />
+                                          <TextField
+                                             label="First Name"
+                                             value={values.firstName}
+                                             name="firstName"
+                                             onChange={handleChange}
+                                             onBlur={handleBlur}
+                                             sx={{ gridColumn: 'span 5' }}
+                                             error={
+                                                Boolean(touched.firstName) &&
+                                                Boolean(errors.firstName)
+                                             }
+                                             helperText={
+                                                touched.firstName &&
+                                                errors.firstName
+                                             }
+                                          />
+                                          <TextField
+                                             label="last Name"
+                                             value={values.lastName}
+                                             name="lastName"
+                                             onChange={handleChange}
+                                             onBlur={handleBlur}
+                                             sx={{ gridColumn: 'span 5' }}
+                                             error={
+                                                Boolean(touched.lastName) &&
+                                                Boolean(errors.lastName)
+                                             }
+                                             helperText={
+                                                touched.lastName &&
+                                                errors.lastName
+                                             }
+                                          />
+                                          <TextField
+                                             label="hourly"
+                                             value={values.hourly}
+                                             name="hourly"
+                                             onChange={handleChange}
+                                             onBlur={handleBlur}
+                                             sx={{ gridColumn: 'span 5' }}
+                                             error={
+                                                Boolean(touched.hourly) &&
+                                                Boolean(errors.hourly)
+                                             }
+                                             helperText={
+                                                touched.hourly && errors.hourly
+                                             }
+                                          />
+                                          <TextField
+                                             label="Commission"
+                                             onBlur={handleBlur}
+                                             onChange={handleChange}
+                                             value={values.commission}
+                                             name="commission"
+                                             error={
+                                                Boolean(touched.commission) &&
+                                                Boolean(errors.commission)
+                                             }
+                                             helperText={
+                                                touched.commission &&
+                                                errors.commission
+                                             }
+                                             sx={{ gridColumn: 'span 2' }}
+                                          />
+                                          <TextField
+                                             label="id"
+                                             value={values.id}
+                                             name="id"
+                                             onChange={handleChange}
+                                             onBlur={handleBlur}
+                                             error={
+                                                Boolean(touched.id) &&
+                                                Boolean(errors.id)
+                                             }
+                                             helperText={
+                                                touched.id && errors.id
+                                             }
+                                             sx={{ gridColumn: 'span 3' }}
+                                          />
+                                       </>
+                                    )}
+
+                                    {values.role === 'vendor' && (
+                                       <>
+                                          <TextField
+                                             label="Business Name"
+                                             onBlur={handleBlur}
+                                             onChange={handleChange}
+                                             value={values.businessName}
+                                             name="businessName"
+                                             error={
+                                                Boolean(touched.businessName) &&
+                                                Boolean(errors.businessName)
+                                             }
+                                             helperText={
+                                                touched.businessName &&
+                                                errors.businessName
+                                             }
+                                             sx={{ mb: '1rem' }}
+                                          />
+                                          <TextField
+                                             label="Contact Name"
+                                             onBlur={handleBlur}
+                                             onChange={handleChange}
+                                             value={values.contactName}
+                                             name="contactName"
+                                             error={
+                                                Boolean(touched.contactName) &&
+                                                Boolean(errors.contactName)
+                                             }
+                                             helperText={
+                                                touched.contactName &&
+                                                errors.contactName
+                                             }
+                                             sx={{ mb: '1rem' }}
+                                          />
+                                       </>
+                                    )}
+                                 </Box>
+                              )}
+                           </>
+                        )}
+
+                        {/* NOTE: BUTTON LOGIN & REGISTER & BACK */}
+                        <Box
+                           sx={{
+                              p: '0px 32px',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              flexWrap: isNonMobile ? 'nowrap' : 'wrap',
+                           }}
+                        >
+                           {pageType === 'login' && (
+                              <h1>
+                                 <Button>Sign-in</Button>
+                              </h1>
+                           )}
+
+                           {pageType === 'register' && (
+                              <>
+                                 {activeStep === 0 ? (
+                                    <h1>
+                                       <Button
+                                          onClick={() =>
+                                             setActiveStep(activeStep + 1)
+                                          }
+                                       >
+                                          Next
+                                       </Button>
+                                    </h1>
+                                 ) : (
+                                    <>
+                                       <Button
+                                          variant="outlined"
+                                          onClick={() => {
+                                             setPageType(isLogin)
+                                             setActiveStep(activeStep - 1)
+                                          }}
+                                          sx={{
+                                             m: '2rem 0',
+                                             p: '1rem',
+                                             backgroundColor:
+                                                palette.primary.main,
+                                             color: palette.background.alt,
+                                             '&:hover': {
+                                                color: palette.primary.main,
+                                             },
+                                          }}
+                                       >
+                                          Back
+                                       </Button>
+                                       <Button
+                                          type="submit"
+                                          variant="contained"
+                                          sx={{
+                                             p: '1rem',
+                                             width: '20%',
+                                             backgroundColor:
+                                                palette.primary.main,
+                                             color: palette.background.alt,
+                                             '&:hover': {
+                                                color: palette.primary.main,
+                                             },
+                                          }}
+                                       >
+                                          Register
+                                       </Button>
+                                    </>
+                                 )}
+                              </>
+                           )}
+                        </Box>
+
+                        <Typography
+                           textAlign="center"
+                           onClick={() => {
+                              setPageType(isLogin ? 'register' : 'login')
+                              resetForm()
+                           }}
+                           sx={{
+                              textDecoration: 'underline',
+                              color: palette.primary.main,
+
+                              '&:hover': {
+                                 cursor: 'pointer',
+                                 color: palette.primary.light,
+                              },
+                           }}
+                        >
+                           {isLogin
+                              ? "Don't have an account? Sign Up here."
+                              : 'Already have an account? Login here.'}
+                        </Typography>
+                     </Box>
+                  </Box>
+               </Box>
+            )}
+         </Formik>
+      </>
+   )
+}
+
+export default RegisterForm
